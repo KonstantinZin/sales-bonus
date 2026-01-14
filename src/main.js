@@ -141,4 +141,7 @@ function analyzeSalesData(data, options) {
     return result;
 }
 
-module.exports = { analyzeSalesData, calculateBonusByProfit, calculateSimpleRevenue };
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { analyzeSalesData, calculateBonusByProfit, calculateSimpleRevenue };
+}
