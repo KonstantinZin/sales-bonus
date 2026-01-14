@@ -7,8 +7,8 @@
 function calculateSimpleRevenue(purchase, _product) {
     if (!purchase || !purchase.sale_price || !purchase.quantity) return 0;
     const discount = purchase.discount || 0;
-    const revenue = purchase.sale_price * purchase.quantity * (1 - discount / 100);
-    return Math.round(revenue * 100) / 100;
+    // ВАЖНО: НЕ округляем здесь! Округление будет в analyzeSalesData
+    return purchase.sale_price * purchase.quantity * (1 - discount / 100);
 }
 
 /**
@@ -33,8 +33,8 @@ function calculateBonusByProfit(index, total, seller) {
         bonusPercentage = 0.05;
     }
     
+    // ВАЖНО: НЕ округляем здесь!
     return seller.profit * bonusPercentage;
-   
 }
 
 /**
@@ -94,16 +94,15 @@ function analyzeSalesData(data, options) {
         
         sellerStat.sales_count += 1;
         
+        
+        sellerStat.revenue += record.total_amount || 0;
+        
         record.items.forEach(item => {
             const product = productIndex[item.sku];
             
             if (!product) return;
             
-            const itemRevenue = calculateRevenue(item, product);
-            
             const itemCost = product.purchase_price * item.quantity;
-            
-            sellerStat.revenue += itemRevenue;
             sellerStat.cost += itemCost;
             
             if (!sellerStat.products_sold[item.sku]) {
@@ -128,20 +127,21 @@ function analyzeSalesData(data, options) {
         
         const bonus = calculateBonus(index, statsArray.length, { profit: stat.profit });
         
+        
         return {
             seller_id: stat.id,
             name: stat.name,
-            revenue: +(stat.revenue.toFixed(2)),
-             profit: +(stat.profit.toFixed(2)), 
+            revenue: Math.round(stat.revenue * 100) / 100,
+            profit: Math.round(stat.profit * 100) / 100,
             sales_count: stat.sales_count,
             top_products: topProducts,
-            bonus: +(bonus.toFixed(2))
+            bonus: Math.round(bonus * 100) / 100
         };
     });
     
     return result;
 }
-
+    
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { analyzeSalesData, calculateBonusByProfit, calculateSimpleRevenue };
