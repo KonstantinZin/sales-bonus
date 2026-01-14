@@ -33,8 +33,8 @@ function calculateBonusByProfit(index, total, seller) {
         bonusPercentage = 0.05;
     }
     
-    const bonus = seller.profit * bonusPercentage;
-    return Math.round(bonus * 100) / 100;
+    return seller.profit * bonusPercentage;
+   
 }
 
 /**
@@ -99,7 +99,6 @@ function analyzeSalesData(data, options) {
             
             if (!product) return;
             
-            // ВАЖНО: Используем переданную функцию calculateRevenue!
             const itemRevenue = calculateRevenue(item, product);
             
             const itemCost = product.purchase_price * item.quantity;
@@ -132,11 +131,11 @@ function analyzeSalesData(data, options) {
         return {
             seller_id: stat.id,
             name: stat.name,
-            revenue: Math.round(stat.revenue * 100) / 100,
-            profit: Math.round(stat.profit * 100) / 100,
+            revenue: +(stat.revenue.toFixed(2)),
+             profit: +(stat.profit.toFixed(2)), 
             sales_count: stat.sales_count,
             top_products: topProducts,
-            bonus: Math.round(bonus * 100) / 100
+            bonus: +(bonus.toFixed(2))
         };
     });
     
