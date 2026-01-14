@@ -7,8 +7,8 @@
 function calculateSimpleRevenue(purchase, _product) {
     if (!purchase || !purchase.sale_price || !purchase.quantity) return 0;
     const discount = purchase.discount || 0;
-    // ВАЖНО: НЕ округляем здесь! Округление будет в analyzeSalesData
-    return purchase.sale_price * purchase.quantity * (1 - discount / 100);
+    const revenue = purchase.sale_price * purchase.quantity * (1 - discount / 100);
+    return revenue; 
 }
 
 /**
@@ -33,8 +33,8 @@ function calculateBonusByProfit(index, total, seller) {
         bonusPercentage = 0.05;
     }
     
-    // ВАЖНО: НЕ округляем здесь!
-    return seller.profit * bonusPercentage;
+    const bonus = seller.profit * bonusPercentage;
+    return bonus; 
 }
 
 /**
@@ -44,10 +44,12 @@ function calculateBonusByProfit(index, total, seller) {
  * @returns {{revenue: number, top_products: { sku: string, quantity: number}[], bonus: number, name: string, sales_count: number, profit: number, seller_id: string}[]}
  */
 function analyzeSalesData(data, options) {
+    
     if (!data || typeof data !== "object") {
         throw new Error('Некорректные входные данные');
     }
 
+   
     const requiredFields = ['sellers', 'products', 'purchase_records'];
     for (const field of requiredFields) {
         if (!data.hasOwnProperty(field)) {
@@ -61,6 +63,7 @@ function analyzeSalesData(data, options) {
         }
     }
 
+    
     if (!options || typeof options !== "object") {
         throw new Error('Не переданы опции');
     }
@@ -70,41 +73,54 @@ function analyzeSalesData(data, options) {
         throw new Error('Отсутствуют необходимые функции для расчетов');
     }
 
+   
     const productIndex = {};
     data.products.forEach(product => {
         productIndex[product.sku] = product;
     });
 
+    
     const sellerStats = {};
     data.sellers.forEach(seller => {
         sellerStats[seller.id] = {
             id: seller.id,
             name: `${seller.first_name} ${seller.last_name}`,
             revenue: 0,
-            cost: 0,
+            profit: 0,
             sales_count: 0,
-            products_sold: {}
+            products_sold: {} 
         };
     });
 
+   
     data.purchase_records.forEach(record => {
         const sellerStat = sellerStats[record.seller_id];
         
         if (!sellerStat) return;
         
+       
         sellerStat.sales_count += 1;
         
-        
-        sellerStat.revenue += record.total_amount || 0;
-        
+       
         record.items.forEach(item => {
             const product = productIndex[item.sku];
             
             if (!product) return;
             
-            const itemCost = product.purchase_price * item.quantity;
-            sellerStat.cost += itemCost;
+           
+            const itemRevenue = calculateRevenue(item, product);
             
+            
+            const itemCost = product.purchase_price * item.quantity;
+            
+            
+            const itemProfit = itemRevenue - itemCost;
+            
+            
+            sellerStat.revenue += itemRevenue;
+            sellerStat.profit += itemProfit;
+            
+           
             if (!sellerStat.products_sold[item.sku]) {
                 sellerStat.products_sold[item.sku] = 0;
             }
@@ -112,30 +128,38 @@ function analyzeSalesData(data, options) {
         });
     });
     
+   
     const statsArray = Object.values(sellerStats).map(stat => ({
-        ...stat,
-        profit: stat.revenue - stat.cost
+        id: stat.id,
+        name: stat.name,
+        revenue: parseFloat(stat.revenue.toFixed(2)), 
+        profit: parseFloat(stat.profit.toFixed(2)),   
+        sales_count: stat.sales_count,
+        products_sold: stat.products_sold
     }));
     
+   
     statsArray.sort((a, b) => b.profit - a.profit);
     
+   
     const result = statsArray.map((stat, index) => {
+        
         const topProducts = Object.entries(stat.products_sold)
             .map(([sku, quantity]) => ({ sku, quantity }))
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
         
+       
         const bonus = calculateBonus(index, statsArray.length, { profit: stat.profit });
-        
         
         return {
             seller_id: stat.id,
             name: stat.name,
-            revenue: Math.round(stat.revenue * 100) / 100,
-            profit: Math.round(stat.profit * 100) / 100,
+            revenue: stat.revenue,
+            profit: stat.profit,
             sales_count: stat.sales_count,
             top_products: topProducts,
-            bonus: Math.round(bonus * 100) / 100
+            bonus: parseFloat(bonus.toFixed(2)) 
         };
     });
     
